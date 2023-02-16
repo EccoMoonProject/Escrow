@@ -49,3 +49,19 @@ type WithdrawRequest struct {
 	OwnerID string `bson:"ownerID"`
 	Amount  uint64 `bson:"amount"`
 }
+
+type Dispute struct {
+	OwnerID  string `bson:"ownerID"`
+	OwnerSHI string `bson:"ownerSHI"`
+	Category string `bson:"category"`
+	Amount   uint64 `bson:"amount"`
+}
+
+// Define a struct to represent a chat
+type Chat struct {
+	ID        string `bson:"_id"`
+	Sender    string `bson:"sender"`
+	OwnerSHI  string `bson:"ownerSHI"`
+	Recipient string `bson:"recipient"`
+	Message   string `bson:"message"`
+}
