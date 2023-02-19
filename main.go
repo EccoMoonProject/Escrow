@@ -42,10 +42,13 @@ func main() {
 
 	dispute.SetupDisputeRoutes(router, client)
 
-	// get port from env
 	port := os.Getenv("PORT")
-	// Start the server
-	router.Run(port)
+	if port == "" {
+		port = "8080"
+	}
+	if err := router.Run(":" + port); err != nil {
+		log.Panicf("error: %s", err)
+	}
 }
 
 func CORSMiddleware() gin.HandlerFunc {
