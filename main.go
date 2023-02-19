@@ -8,8 +8,10 @@ import (
 	"escrow/moneyStripe"
 	"escrow/userData"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -26,16 +28,39 @@ func main() {
 	// Create a new Gin router
 	router := gin.Default()
 
+	router.Use(CORSMiddleware())
+
 	auth.SetupAuthRoutes(router, client)
 
 	userData.SetupUserRoutes(router, client)
 
 	escrow.SetupEscrowRoutes(router, client)
+	escrow.SetupChatsRoutes(router, client)
 
 	moneyStripe.SetupStripeRoutes(router, client)
+	moneyStripe.SetupPayoutsRoutes(router, client)
 
 	dispute.SetupDisputeRoutes(router, client)
 
+	// get port from env
+	port := os.Getenv("PORT")
 	// Start the server
-	router.Run(":8080")
+	router.Run(port)
+}
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Header("Access-Control-Allow-Methods", "POST,HEAD,PATCH, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
 }

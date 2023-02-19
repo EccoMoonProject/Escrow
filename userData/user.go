@@ -4,7 +4,6 @@ import (
 	"context"
 	"escrow/types"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -13,19 +12,20 @@ import (
 
 func SetupUserRoutes(r *gin.Engine, client *mongo.Client) {
 
-	r.GET("user/wallet/createWallet", func(c *gin.Context) {
-		// Get the query parameters
-		ownerID := c.Query("ownerID")
-		deposit := c.Query("deposit")
+	r.POST("user/wallet/createWallet", func(c *gin.Context) {
 
-		// Convert the deposit to a uint64
-		depositUint64, err := strconv.ParseUint(deposit, 10, 64)
+		var walletReq types.Wallet
+		err := c.BindJSON(&walletReq)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse request body"})
+			return
+		}
 
 		// Get a handle to the users collection
 		collection := client.Database("mydb").Collection("wallets")
 
 		// Create a new Wallet struct with the query parameters
-		wallet := types.Wallet{OwnerID: ownerID, Balance: depositUint64}
+		wallet := types.Wallet{OwnerID: walletReq.OwnerID, Balance: walletReq.Balance}
 
 		// Insert the wallet into the wallets collection
 		_, err = collection.InsertOne(context.Background(), wallet)
@@ -57,19 +57,20 @@ func SetupUserRoutes(r *gin.Engine, client *mongo.Client) {
 		c.JSON(http.StatusOK, gin.H{"balance": wallet.Balance})
 	})
 
-	r.GET("user/wallet/deposit", func(c *gin.Context) {
-		// Get the query parameters
-		ownerID := c.Query("ownerID")
-		deposit := c.Query("deposit")
+	r.POST("user/wallet/deposit", func(c *gin.Context) {
 
-		// Convert the deposit to a uint64
-		depositUint64, err := strconv.ParseUint(deposit, 10, 64)
+		var walletReq types.Wallet
+		err := c.BindJSON(&walletReq)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse request body"})
+			return
+		}
 
 		// Get a handle to the users collection
 		collection := client.Database("mydb").Collection("wallets")
 
 		// Create a filter to find the wallet with the ownerID
-		filter := bson.M{"ownerID": ownerID}
+		filter := bson.M{"ownerID": walletReq.OwnerID}
 
 		// Find the wallet with the ownerID
 		var wallet types.Wallet
@@ -80,7 +81,7 @@ func SetupUserRoutes(r *gin.Engine, client *mongo.Client) {
 		}
 
 		// update the wallet balance
-		update := bson.M{"$set": bson.M{"balance": wallet.Balance + depositUint64}}
+		update := bson.M{"$set": bson.M{"balance": wallet.Balance + walletReq.Balance}}
 
 		// Update the wallet balance
 		_, err = collection.UpdateOne(context.Background(), filter, update)
@@ -92,19 +93,20 @@ func SetupUserRoutes(r *gin.Engine, client *mongo.Client) {
 		c.JSON(http.StatusOK, gin.H{"message": "Wallet updated successfully"})
 	})
 
-	r.GET("user/wallet/withdraw", func(c *gin.Context) {
-		// Get the query parameters
-		ownerID := c.Query("ownerID")
-		withdrawal := c.Query("withdrawal")
+	r.POST("user/wallet/withdraw", func(c *gin.Context) {
 
-		// Convert the withdrawal to a uint64
-		withdrawalUint64, err := strconv.ParseUint(withdrawal, 10, 64)
+		var walletReq types.Wallet
+		err := c.BindJSON(&walletReq)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse request body"})
+			return
+		}
 
 		// Get a handle to the users collection
 		collection := client.Database("mydb").Collection("wallets")
 
 		// Create a filter to find the wallet with the ownerID
-		filter := bson.M{"ownerID": ownerID}
+		filter := bson.M{"ownerID": walletReq.OwnerID}
 
 		// Find the wallet with the ownerID
 		var wallet types.Wallet
@@ -115,13 +117,13 @@ func SetupUserRoutes(r *gin.Engine, client *mongo.Client) {
 		}
 
 		// Check if the wallet has enough balance
-		if wallet.Balance < withdrawalUint64 {
+		if wallet.Balance < walletReq.Balance {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Insufficient balance"})
 			return
 		}
 
 		// update the wallet balance
-		update := bson.M{"$set": bson.M{"balance": wallet.Balance - withdrawalUint64}}
+		update := bson.M{"$set": bson.M{"balance": wallet.Balance - walletReq.Balance}}
 
 		// Update the wallet balance
 		_, err = collection.UpdateOne(context.Background(), filter, update)
@@ -133,18 +135,20 @@ func SetupUserRoutes(r *gin.Engine, client *mongo.Client) {
 		c.JSON(http.StatusOK, gin.H{"message": "Wallet updated successfully"})
 	})
 
-	r.GET("user/wallet/paymentRequest", func(c *gin.Context) {
-		ownerID := c.Query("ownerID")
-		amount := c.Query("amount")
+	r.POST("user/wallet/paymentRequest", func(c *gin.Context) {
 
-		// Convert the amount to a uint64
-		amountUint64, err := strconv.ParseUint(amount, 10, 64)
+		var walletReq types.Wallet
+		err := c.BindJSON(&walletReq)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse request body"})
+			return
+		}
 
 		// Get a handle to the wallets collection
 		collection := client.Database("mydb").Collection("wallets")
 
 		// Create a filter to find the wallet with the ownerID
-		filter := bson.M{"ownerID": ownerID}
+		filter := bson.M{"ownerID": walletReq.OwnerID}
 
 		// Find the wallet with the ownerID
 		var wallet types.Wallet
@@ -155,13 +159,13 @@ func SetupUserRoutes(r *gin.Engine, client *mongo.Client) {
 		}
 
 		// Check if the wallet has enough balance
-		if wallet.Balance < amountUint64 {
+		if wallet.Balance < walletReq.Balance {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Insufficient balance"})
 			return
 		}
 
 		// update the wallet balance
-		update := bson.M{"$set": bson.M{"balance": wallet.Balance - amountUint64}}
+		update := bson.M{"$set": bson.M{"balance": wallet.Balance - walletReq.Balance}}
 
 		// Update the wallet balance
 		_, err = collection.UpdateOne(context.Background(), filter, update)
@@ -174,4 +178,63 @@ func SetupUserRoutes(r *gin.Engine, client *mongo.Client) {
 
 	})
 
+	r.GET("user/wallet/getWallet", func(c *gin.Context) {
+		owner_id := c.Query("ownerID")
+
+		// Get a handle to the wallets collection
+		collection := client.Database("mydb").Collection("wallets")
+
+		// Create a filter to find the wallet with the ownerID
+		filter := bson.M{"ownerID": owner_id}
+
+		// Find the wallet with the ownerID
+		var wallet types.Wallet
+		err := collection.FindOne(context.Background(), filter).Decode(&wallet)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find wallet"})
+			return
+		}
+
+		c.JSON(http.StatusOK, wallet)
+	})
+
+	r.GET("user/wallet/isWalletCreated", func(c *gin.Context) {
+		owner_id := c.Query("ownerID")
+
+		// Get a handle to the wallets collection
+		collection := client.Database("mydb").Collection("wallets")
+
+		// Create a filter to find the wallet with the ownerID
+		filter := bson.M{"ownerID": owner_id}
+
+		// Find the wallet with the ownerID
+		var wallet types.Wallet
+		err := collection.FindOne(context.Background(), filter).Decode(&wallet)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"isWalletCreated": false})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"isWalletCreated": true})
+	})
+
+	r.GET("user/getUser", func(c *gin.Context) {
+		owner_id := c.Query("ownerID")
+
+		// Get a handle to the users collection
+		collection := client.Database("mydb").Collection("users")
+
+		// Create a filter to find the user with the userID
+		filter := bson.M{"ownerID": owner_id}
+
+		// Find the user with the userID
+		var user types.User
+		err := collection.FindOne(context.Background(), filter).Decode(&user)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find user"})
+			return
+		}
+
+		c.JSON(http.StatusOK, user)
+	})
 }

@@ -1,22 +1,29 @@
 package types
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type User struct {
-	Name        string `bson:"name"`
-	Email       string `bson:"email"`
-	Password    string `bson:"password"`
-	DateOfBirth string `bson:"dateOfBirth"`
+	Name     string `bson:"name"`
+	OwnerID  string `bson:"ownerID"`
+	Email    string `bson:"email"`
+	Password string `bson:"password"`
 }
 
 type EscrowInstance struct {
 	InstanceID      string `bson:"instanceID"`
 	OwnerID         string `bson:"ownerID"`
-	OwnerName       string `bson:"ownerName"`
 	OwnerEmail      string `bson:"ownerEmail"`
-	OwnerPhone      string `bson:"ownerPhone"`
 	Amount          uint64 `bson:"amount"`
 	Status          bool   `bson:"status"`
 	OwnerSHI        string `bson:"ownerSHI"`
 	SecureDestroyer bool   `bson:"secureDestroyer"`
+}
+
+type EscrowRequest struct {
+	OwnerID  string `bson:"ownerID"`
+	Email    string `bson:"email"`
+	Amount   uint64 `bson:"amount"`
+	Currency string `bson:"currency"`
 }
 
 type VotingPool struct {
@@ -26,6 +33,12 @@ type VotingPool struct {
 	BuyerVote  uint16 `bson:"buyerVote"`
 	SellerVote uint16 `bson:"sellerVote"`
 	Consensus  bool   `bson:"consensus"`
+}
+
+type VotingRequest struct {
+	InstanceID string `bson:"instanceID"`
+	BuyerID    string `bson:"ownerID"`
+	SellerID   string `bson:"sellerID"`
 }
 
 type PaymentRequest struct {
@@ -64,4 +77,10 @@ type Chat struct {
 	OwnerSHI  string `bson:"ownerSHI"`
 	Recipient string `bson:"recipient"`
 	Message   string `bson:"message"`
+}
+
+type ChatRoom struct {
+	ID      primitive.ObjectID `bson:"_id,omitempty"`
+	Name    string             `bson:"name"`
+	Members []string           `bson:"members"`
 }

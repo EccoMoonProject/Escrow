@@ -17,16 +17,14 @@ import (
 
 func SetupEscrowRoutes(r *gin.Engine, client *mongo.Client) {
 
-	r.GET("escrow/createInstance", func(c *gin.Context) {
-		// Get the query parameters
-		ownerID := c.Query("ownerID")
-		ownerName := c.Query("ownerName")
-		ownerEmail := c.Query("ownerEmail")
-		ownerPhone := c.Query("ownerPhone")
-		amount := c.Query("amount")
+	r.POST("escrow/createInstance", func(c *gin.Context) {
 
-		// Convert the amount to a uint64
-		amountUint64, err := strconv.ParseUint(amount, 10, 64)
+		var escrowRequest types.EscrowRequest
+		err := c.BindJSON(&escrowRequest)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse request body"})
+			return
+		}
 
 		// Initialize the random number generator
 		rand.Seed(time.Now().UnixNano())
@@ -52,7 +50,7 @@ func SetupEscrowRoutes(r *gin.Engine, client *mongo.Client) {
 		var status bool = false
 
 		// Create a new EscrowInstance struct with the query parameters
-		escrowInstance := types.EscrowInstance{InstanceID: randomString, OwnerID: ownerID, OwnerName: ownerName, OwnerEmail: ownerEmail, OwnerPhone: ownerPhone, Amount: amountUint64, Status: status, OwnerSHI: secure_hash_identifier, SecureDestroyer: secureDestroyer}
+		escrowInstance := types.EscrowInstance{InstanceID: randomString, OwnerID: escrowRequest.OwnerID, OwnerEmail: escrowRequest.Email, Amount: escrowRequest.Amount, Status: status, OwnerSHI: secure_hash_identifier, SecureDestroyer: secureDestroyer}
 
 		// Get a handle to the escrowInstances collection
 		collection := client.Database("mydb").Collection("escrowInstances")
@@ -64,13 +62,13 @@ func SetupEscrowRoutes(r *gin.Engine, client *mongo.Client) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "EscrowInstance inserted successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Escrow Instance created", "instanceId": randomString, "ownerId": escrowRequest.OwnerID, "ownerSHI": secure_hash_identifier, "currency": escrowRequest.Currency, "amount": escrowRequest.Amount, "status": status, "secureDestroyer": secureDestroyer})
 
 	})
 
-	r.GET("escrow/destroyInstance/:shi", func(c *gin.Context) {
+	r.GET("escrow/destroyInstance", func(c *gin.Context) {
 		// Get the query parameters
-		shi := c.Param("shi")
+		shi := c.Query("ownerSHI")
 
 		// Get a handle to the escrowInstances collection
 		collection := client.Database("mydb").Collection("escrowInstances")
@@ -91,20 +89,20 @@ func SetupEscrowRoutes(r *gin.Engine, client *mongo.Client) {
 		c.JSON(http.StatusOK, gin.H{"message": "Instance deleted"})
 	})
 
-	r.GET("escrow/payInstance", func(c *gin.Context) {
-		instanceId := c.Query("instanceId")
-		ownerId := c.Query("ownerId")
-		ownerSHI := c.Query("ownerSHI")
-		amount := c.Query("amount")
+	r.POST("escrow/payInstance", func(c *gin.Context) {
 
-		// Convert the amount to a uint64
-		amountUint64, err := strconv.ParseUint(amount, 10, 64)
+		var p types.PayInstanceRequest
+		err := c.BindJSON(&p)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse request body"})
+			return
+		}
 
 		// find the instance
 		collection := client.Database("mydb").Collection("escrowInstances")
 
 		// Create a filter to find the instance
-		filter := bson.M{"instanceID": instanceId, "ownerID": ownerId, "ownerSHI": ownerSHI}
+		filter := bson.M{"instanceID": p.InstanceID, "ownerID": p.OwnerID, "ownerSHI": p.OwnerSHI}
 
 		// Find the instance
 		var escrowInstance types.EscrowInstance
@@ -117,7 +115,7 @@ func SetupEscrowRoutes(r *gin.Engine, client *mongo.Client) {
 		amountInstance := escrowInstance.Amount
 
 		// check if the amount is enough
-		if amountUint64 < amountInstance {
+		if p.Amount < amountInstance {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Not enough amount"})
 			return
 		}
@@ -135,9 +133,9 @@ func SetupEscrowRoutes(r *gin.Engine, client *mongo.Client) {
 
 	})
 
-	r.GET("escrow/getInstanceStatus/:instanceId", func(c *gin.Context) {
+	r.GET("escrow/getInstanceStatus", func(c *gin.Context) {
 		// Get the query parameters
-		instanceId := c.Param("instanceId")
+		instanceId := c.Query("instanceId")
 
 		// Get a handle to the escrowInstances collection
 		collection := client.Database("mydb").Collection("escrowInstances")
@@ -154,16 +152,15 @@ func SetupEscrowRoutes(r *gin.Engine, client *mongo.Client) {
 		c.JSON(http.StatusOK, gin.H{"message": "Instance found", "status": escrowInstance.Status})
 	})
 
-	r.GET("escrow/voting/createPool", func(c *gin.Context) {
-		instanceId := c.Query("instanceId")
-		buyerId := c.Query("buyerId")
-		sellerId := c.Query("sellerId")
+	r.POST("escrow/voting/createPool", func(c *gin.Context) {
+
+		var p types.VotingRequest
 		var buyerVote uint16 = 0
 		var sellerVote uint16 = 0
 		var consensus bool = false
 
 		// Create a new VotingPool struct with the query parameters
-		votingPool := types.VotingPool{InstanceID: instanceId, BuyerID: buyerId, SellerID: sellerId, BuyerVote: buyerVote, SellerVote: sellerVote, Consensus: consensus}
+		votingPool := types.VotingPool{InstanceID: p.InstanceID, BuyerID: p.BuyerID, SellerID: p.SellerID, BuyerVote: buyerVote, SellerVote: sellerVote, Consensus: consensus}
 
 		// Get a handle to the votingPools collection
 		collection := client.Database("mydb").Collection("votingPools")
