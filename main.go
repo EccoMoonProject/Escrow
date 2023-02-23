@@ -18,7 +18,7 @@ import (
 
 func main() {
 	// Set up a connection to the MongoDB database
-	clientOptions := options.Client().ApplyURI("mongodb+srv://EscrowBackend:Atlantica123@cluster0.p2vyode.mongodb.net/?retryWrites=true&w=majority")
+	clientOptions := options.Client().ApplyURI("")
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
